@@ -1,0 +1,13 @@
+MSH|^~\&|ECONSENTPRO|THIEME|ECONSENTPRO|THIEME|20261102103042||ORU^R01|test|P|2.5|||AL|NE|DEU|UNICODE UTF-8
+PID|1||11111111||Mustermann^Max||1981102||||Musterstraße 42^^Musterhausen^^35037||^^CP
+PV1|1|U|||||||||||||||||22222222
+OBR|1||333333333|E-EDP62_0005764449^Einwilligung Molekularpathologie Marburg^LANF
+OBX|1|ST|custom.PAT-ADR||||||||F|||20261102103042
+OBX|2|ST|radiobuttons4||custom.RB-consent-Rekontaktierung_yes||||||F|||20261102103042
+OBX|3|ST|radiobuttons3||custom.RB-consent-Rekontaktierung-Arzt_yes||||||F|||20261102103042
+OBX|4|ST|custom.PAT-NN-VN||||||||F|||20261102103042
+OBX|5|ST|radiobuttons2||custom.RB-consent-Probenverwendung_yes||||||F|||20261102103042
+OBX|6|ST|custom.PAT-GEB||||||||F|||20261102103042
+OBX|7|ST|radiobuttons1||custom.RB-consent-Ergebnisauswertung_yes||||||F|||20261102103042
+OBX|8|ST|Arztdaten||Dr. Arzt||||||F|||20261102103042
+OBX|9|ST|custom.leerzeile8-EDP62||||||||F|||20261102103042

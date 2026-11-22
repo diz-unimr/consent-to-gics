@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: consent-to-gics
+  jmx:
+    enabled: true
+  kafka:
+    consumer:
+      properties:
+        spring.json.use.type.headers: false
+    producer:
+      compression-type: gzip
+      properties:
+        max.request.size: 5242880
+    bootstrap-servers: ${BOOTSTRAP_SERVERS:localhost:9092}
+    security.protocol: ${SECURITY_PROTOCOL:PLAINTEXT}
+    ssl:
+      trust-store-location: file://${SSL_TRUST_STORE_LOCATION_INTERNAL:/opt/fhir-merger/ssl/truststore.jks}
+      trust-store-password: ${SSL_TRUST_STORE_PASSWORD}
+      key-store-location: file://${SSL_KEY_STORE_LOCATION_INTERNAL:/opt/fhir-merger/ssl/keystore.jks}
+      key-store-password: ${SSL_KEY_STORE_PASSWORD}
+    streams:
+      application-id: consent-to-gics
+
+consent:
+  in:
+    topic:
+      policies:
+      documents:
+    filter:
+  out:
+    gics:
+      fhir:
+        base-url:
+        auth:
+          basic:
+            user:
+            password:
+          oauth: # client credentials flow
+            endpoint:
+            client_id:
+            client_secret:
+
+
+
+management:
+  server:
+    port: 8080
+  endpoints:
+    web:
+      exposure:
+        include: "health, prometheus, info, metric"
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.kafka.config: info
+    de.uni_marburg.diz.consent_to_gics: debug
