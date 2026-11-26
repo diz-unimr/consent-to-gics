@@ -1,8 +1,9 @@
 package de.uni_marburg.diz.consent_to_gics;
 
-import ca.uhn.hl7v2.HL7Exception;
+import ca.uhn.fhir.context.FhirContext;
 import de.uni_marburg.diz.consent_to_gics.configuration.ConsentProperties;
 import de.uni_marburg.diz.consent_to_gics.configuration.KafkaConfiguration;
+import de.uni_marburg.diz.consent_to_gics.mapping.Mapper;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.TopologyTestDriver;
@@ -24,7 +25,7 @@ public class ProcessorTests {
     private Resource hl7Document;
 
     @Test
-    public void buildPipelineConfiguresProcessor() throws HL7Exception, IOException {
+    public void buildPipelineConfiguresProcessor() throws IOException {
 
         var kafkaConfig = new KafkaConfiguration();
 
@@ -35,9 +36,13 @@ public class ProcessorTests {
         props.setIn(new ConsentProperties.In(new ConsentProperties.Topic(policies, documents)));
         props.setOut(new ConsentProperties.Out(new ConsentProperties.Gics(new ConsentProperties.Fhir("test-url"))));
 
+        var mapper = new Mapper();
+        var fhirContext = FhirContext.forR4();
+        var fhirClient = new FhirClient(fhirContext, props);
+
         // build stream
-        var builder = new StreamsBuilder(); //new TopologyConfig(new StreamsConfig(Map.of("application.id", "consent-to-gics"))));
-        new Processor(props, kafkaConfig.oruSerde(), kafkaConfig.mdmSerde()).buildPipeline(builder);
+        var builder = new StreamsBuilder();
+        new Processor(props, kafkaConfig.oruSerde(), kafkaConfig.mdmSerde(), mapper, fhirClient, fhirContext).buildPipeline(builder);
 
         try (var driver = new TopologyTestDriver(builder.build())) {
 

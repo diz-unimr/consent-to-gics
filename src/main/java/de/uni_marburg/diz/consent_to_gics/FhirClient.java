@@ -3,17 +3,10 @@ package de.uni_marburg.diz.consent_to_gics;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.exceptions.FhirClientConnectionException;
-import ca.uhn.hl7v2.HL7Exception;
 import de.uni_marburg.diz.consent_to_gics.configuration.ConsentProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.hl7.fhir.r4.model.CanonicalType;
-import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.Meta;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Parameters;
-import org.hl7.fhir.r4.model.Patient;
-import org.hl7.fhir.r4.model.QuestionnaireResponse;
-import org.hl7.fhir.r4.model.Reference;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.RetryListener;
@@ -26,7 +19,6 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.util.HashMap;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -38,58 +30,32 @@ public class FhirClient {
     private final ConsentProperties properties;
     private final RetryTemplate retryTemplate;
     private final IGenericClient client;
+    private final FhirContext fhirContext;
 
 
     public FhirClient(FhirContext fhirContext,
                       ConsentProperties properties) {
         this.properties = properties;
+        this.fhirContext = fhirContext;
         this.client = fhirContext.newRestfulGenericClient(properties.getOut().getGics().getFhir().getBaseUrl());
         this.retryTemplate = defaultTemplate();
     }
 
-    public OperationOutcome addConsent(Consent consent) throws HL7Exception {
-        log.info("Sending consent '{}' to gICS at {}", consent.consentTemplateName(),
+    public OperationOutcome addConsent(String templateId, Parameters params) {
+        log.info("Sending consent '{}' to gICS at {}", templateId,
             this.client.getServerBase());
-
-        var param = mapConsent(consent);
+        log.trace("{}", fhirContext.newJsonParser().encodeResourceToString(params));
 
         OperationOutcome result = retryTemplate.execute(
             ctx -> client.operation().onServer().named("addConsent")
-                .withParameters(param).returnResourceType(OperationOutcome.class)
+                .withParameters(params).returnResourceType(OperationOutcome.class)
                 .execute());
 
         return result;
     }
 
-    private Parameters mapConsent(Consent consent) throws HL7Exception {
-        var params = new Parameters();
-        var patient = new Patient();
-        patient.setMeta(new Meta().setProfile(List.of(new CanonicalType("http://fhir.de/ConsentManagement/StructureDefinition/Patient"))));
-        patient.setIdentifier(List.of(new Identifier().setSystem("https://ths-greifswald.de/fhir/gics/identifiers/Patienten-ID").setValue(consent.patientId())));
-
-        var patientRef = new Reference(String.format("Patient/%s", consent.patientId()));
-
-        var questionnaire = new QuestionnaireResponse()
-            .setQuestionnaire("https://ths-greifswald.de/fhir/gics/QuestionnaireComposed/MII/Patienteneinwilligung+MII|1.6.m")
-            .setStatus(QuestionnaireResponse.QuestionnaireResponseStatus.COMPLETED)
-            .setSubject(patientRef)
-            .setAuthored(consent.date())
-            .setAuthor(consent.author())
-            .setSource(patientRef)
-            .setItem(
-                consent.items()
-//                new QuestionnaireResponse.QuestionnaireResponseItemComponent()
-            );
-
-        params.addParameter().setName("patient")
-            .setResource(patient);
-        params.addParameter().setName("questionnaireResponse")
-            .setResource(questionnaire);
-        return params;
-    }
-
     static RetryTemplate defaultTemplate() {
-        RetryTemplate retryTemplate = new RetryTemplate();
+        var retryTemplate = new RetryTemplate();
 
         var backOffPolicy = new ExponentialBackOffPolicy();
         backOffPolicy.setInitialInterval(BACKOFF_INITIAL_INTERVAL);
