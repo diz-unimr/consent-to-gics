@@ -3,9 +3,8 @@ package de.uni_marburg.diz.consent_to_gics;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.exceptions.FhirClientConnectionException;
-import de.uni_marburg.diz.consent_to_gics.configuration.ConsentProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.hl7.fhir.r4.model.OperationOutcome;
+import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Parameters;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
@@ -27,31 +26,26 @@ public class FhirClient {
     private static final long BACKOFF_INITIAL_INTERVAL = 5000;
     private static final double BACKOFF_MULTIPLIER = 1.25;
     private static final int RETRY_MAX_ATTEMPTS = 3;
-    private final ConsentProperties properties;
     private final RetryTemplate retryTemplate;
     private final IGenericClient client;
     private final FhirContext fhirContext;
 
 
-    public FhirClient(FhirContext fhirContext,
-                      ConsentProperties properties) {
-        this.properties = properties;
-        this.fhirContext = fhirContext;
-        this.client = fhirContext.newRestfulGenericClient(properties.getOut().getGics().getFhir().getBaseUrl());
+    public FhirClient(IGenericClient client) {
+        this.fhirContext = client.getFhirContext();
+        this.client = client;
         this.retryTemplate = defaultTemplate();
     }
 
-    public OperationOutcome addConsent(String templateId, Parameters params) {
+    public Bundle addConsent(String templateId, Parameters params) {
         log.info("Sending consent '{}' to gICS at {}", templateId,
             this.client.getServerBase());
         log.trace("{}", fhirContext.newJsonParser().encodeResourceToString(params));
 
-        OperationOutcome result = retryTemplate.execute(
+        return retryTemplate.execute(
             ctx -> client.operation().onServer().named("addConsent")
-                .withParameters(params).returnResourceType(OperationOutcome.class)
+                .withParameters(params).returnResourceType(Bundle.class)
                 .execute());
-
-        return result;
     }
 
     static RetryTemplate defaultTemplate() {

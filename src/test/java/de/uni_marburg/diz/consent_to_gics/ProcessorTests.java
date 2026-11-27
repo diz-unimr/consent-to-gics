@@ -1,12 +1,14 @@
 package de.uni_marburg.diz.consent_to_gics;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.client.api.IGenericClient;
 import de.uni_marburg.diz.consent_to_gics.configuration.ConsentProperties;
 import de.uni_marburg.diz.consent_to_gics.configuration.KafkaConfiguration;
 import de.uni_marburg.diz.consent_to_gics.mapping.Mapper;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.TopologyTestDriver;
+import org.hl7.fhir.r4.model.Bundle;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,6 +16,13 @@ import org.springframework.core.io.Resource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 public class ProcessorTests {
@@ -34,11 +43,18 @@ public class ProcessorTests {
 
         var props = new ConsentProperties();
         props.setIn(new ConsentProperties.In(new ConsentProperties.Topic(policies, documents)));
-        props.setOut(new ConsentProperties.Out(new ConsentProperties.Gics(new ConsentProperties.Fhir("test-url"))));
+        props.setOut(new ConsentProperties.Out(new ConsentProperties.Gics(new ConsentProperties.Fhir("http://ths/ttp-fhir/fhir/gics/"))));
 
         var mapper = new Mapper();
         var fhirContext = FhirContext.forR4();
-        var fhirClient = new FhirClient(fhirContext, props);
+
+        // mock REST client
+        var mockClient = mock(IGenericClient.class, RETURNS_DEEP_STUBS);
+        when(mockClient.operation().onServer().named("addConsent")
+            .withParameters(any()).returnResourceType(Bundle.class)
+            .execute())
+            .thenReturn(new Bundle());
+        var fhirClient = new FhirClient(mockClient);
 
         // build stream
         var builder = new StreamsBuilder();
@@ -55,11 +71,10 @@ public class ProcessorTests {
 
             // create input records
             policiesTopic.pipeInput("test", hl7Policies.getContentAsString(StandardCharsets.UTF_8));
-
             documentsTopic.pipeInput("test", hl7Document.getContentAsString(StandardCharsets.UTF_8));
 
-            // todo assert consent sent
-            assert (true);
+            // 'addConsent' operation called
+            verify(mockClient, times(1));
         }
     }
 }
