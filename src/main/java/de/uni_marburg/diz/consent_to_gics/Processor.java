@@ -13,9 +13,7 @@ import org.apache.kafka.common.serialization.Serdes.StringSerde;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.JoinWindows;
-import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.StreamJoined;
-import org.hl7.fhir.r4.model.Parameters;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -64,21 +62,19 @@ public class Processor {
                 try {
                     process(consent);
                 } catch (HL7Exception e) {
+                    log.error("Failed to process record with key={}", key, e);
                     throw new RuntimeException(e);
                 }
             });
 
     }
 
-    private KStream<String, Parameters> process(Consent consent) throws HL7Exception {
+    private void process(Consent consent) throws RuntimeException, HL7Exception {
         var params = mapper.map(consent);
         log.info("{}", fhirContext.newJsonParser().encodeResourceToString(params));
 
-        var outcome = fhirClient.addConsent(consent.consentTemplateId(), params);
-        log.info("{}", outcome);
-
-        // todo check outcome
-        return null;
+        var result = fhirClient.addConsent(consent.consentTemplateId(), params);
+        log.info("{}", result);
     }
 
     boolean hasMapping(ORU_R01 oru) {
